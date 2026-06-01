@@ -15,6 +15,11 @@ remedies. Each entry links to a detailed spec file in this folder.
 | 3 | Mozi — governed autonomy for drug discovery | Agentic LLM (dual-layer) | Academic (arXiv) | 2026 | [mozi-governed-autonomy.md](./mozi-governed-autonomy.md) |
 | 4 | DrugAgent & BioMedAgent frameworks | Agentic LLM (multi-agent) | Various (academic) | 2024–2026 | [agentic-drug-discovery-frameworks.md](./agentic-drug-discovery-frameworks.md) |
 | 5 | AI agents in cancer research & oncology | Agentic LLM (survey + examples) | Various (academic) | 2025 | [ai-agents-cancer-oncology.md](./ai-agents-cancer-oncology.md) |
+| 6 | The AI Scientist-v2 | Agentic LLM (end-to-end, tree search) | Sakana AI | 2025 | [ai-scientist-v2.md](./ai-scientist-v2.md) |
+| 7 | Biomni | Agentic LLM (general-purpose biomedical) | Stanford | 2025 | [biomni.md](./biomni.md) |
+| 8 | Robin | Agentic LLM (multi-agent therapeutic discovery) | FutureHouse | 2025 | [robin-futurehouse.md](./robin-futurehouse.md) |
+| 9 | The Virtual Lab | Agentic LLM (PI + scientist agents) | Stanford (Zou/Swanson) | 2024–2025 | [virtual-lab.md](./virtual-lab.md) |
+| 10 | STELLA | Agentic LLM (self-evolving, builds own tools) | Princeton / Stanford | 2025 | [stella.md](./stella.md) |
 
 ### Building one yourself
 
@@ -31,7 +36,7 @@ reference repos and config examples) so the systems can be reimplemented.
 - **Discovery models** (entry 2) work at the *molecule level*: represent molecules as
   graphs → predict or generate structure → screen by predicted activity/toxicity →
   synthesize and test. The intelligence lives in the GNN/VAE, not in any "reasoning" loop.
-- **Agentic AI scientists** (entries 1, 3, 4, 5) work at the *hypothesis level*: an LLM is
+- **Agentic AI scientists** (entries 1, 3, 4, 5, 6–10) work at the *hypothesis level*: an LLM is
   wrapped in a loop of **plan → call tools/literature → critique → rank → refine**, usually
   split across specialized agents coordinated by a supervisor, with a tournament/Elo or
   reflection mechanism standing in for peer review. Humans (or robotic labs) still do the
