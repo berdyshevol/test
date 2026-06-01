@@ -22,12 +22,20 @@ tool the agent calls, but it does not get its own file.)
 
 ## Workflow
 
-Run these steps in order. After writing the catalog files, **commit and push** the new
-work to the current branch on GitHub (step 8).
+Run these steps in order. There is a **confirmation gate** (step 3) before anything is
+written, a **cap** on how many systems are added per run, and an **automated link-check**
+(step 8) before the commit.
 
-1. **Load the existing catalog for dedup.** Read `agentic-research-systems/index.md` and list
-   the current entry files. Build a set of system names already covered. Anything you find
-   that is already cataloged is NOT new — skip it (or note it as "already have it").
+**Per-run cap:** add at most **5 new systems** per run (default). If the user passed a number
+in the skill args (e.g. "scout 3"), use that instead. If more than the cap qualify, keep the
+most notable/most-cited and list the rest as "candidates for next run."
+
+1. **Load the existing catalog for dedup.** Read `agentic-research-systems/index.md` and skim
+   the entry files. Build an identity for each existing system — **name + aliases + arXiv id +
+   repo URL + org** — not just the name. A find is a duplicate if ANY of those match. (This
+   region is crowded: there are already two different "DrugAgent" papers, and STELLA vs
+   BioMedAgent are distinct teams despite both being "self-evolving biomedical agents" — match
+   on identity, not on a fuzzy name.)
 
 2. **Fan-out web search.** Search several angles for *recent* systems (bias to the last
    ~12–18 months). Suggested angles — run them in parallel:
@@ -37,32 +45,48 @@ work to the current branch on GitHub (step 8).
    - GitHub repos for new agentic-science frameworks
    For breadth, you MAY spawn parallel `Explore`/`general-purpose` subagents, one per angle.
 
-3. **Fetch primary sources.** For each promising hit, fetch the paper and any code repo. Prefer
-   primary sources (arXiv/journal/GitHub) over blog summaries. If a publisher URL 403s, find an
-   open-access mirror (PMC, arXiv HTML, project page).
+3. **Build a shortlist and CONFIRM before writing.** Produce a short table of candidate NEW
+   systems (name, org, year, 1-line what-it-is, primary-source URL, in/out of scope). Then
+   **pause and ask the user to confirm** which to add (use `AskUserQuestion` if helpful). Do
+   NOT write any files until the user confirms. Skip this gate ONLY if the user explicitly said
+   "no confirmation / just add them."
 
-4. **Verify before writing.** Only assert a claim if it is supported by the primary source (or
-   2+ secondary sources agree). No hype, no invented numbers. If a detail is unconfirmed, say so
-   or omit it.
+4. **Fetch primary sources.** For each confirmed candidate, fetch the paper and any code repo.
+   Prefer primary sources (arXiv/journal/GitHub) over blog summaries. If a publisher URL 403s,
+   find an open-access mirror (PMC, arXiv HTML, project page). **Note in the file when a detail
+   came only from a secondary source or could not be confirmed from the primary.**
 
-5. **Write one file per NEW system** using `TEMPLATE.md` in this skill folder. Filename =
+5. **Verify before writing.** Only assert a claim if it is supported by the primary source (or
+   2+ secondary sources agree). No hype, no invented numbers. Mark any unconfirmed specific
+   (model name, benchmark number, agent list) with "(unconfirmed)" rather than stating it flatly.
+
+6. **Write one file per confirmed system** using `TEMPLATE.md` in this skill folder. Filename =
    kebab-case system name, e.g. `agentic-research-systems/<system-name>.md`. Prioritize
    **implementation-level detail** (architecture, agent roles & I/O, control loop, tools/models,
    tech stack, open-source repos) — that is the point of the catalog.
 
-6. **Update the index.** Add a row to the table in `agentic-research-systems/index.md` (next
+7. **Update the index.** Add a row to the table in `agentic-research-systems/index.md` (next
    number, name, type, org, year, file link). If a new system changes the "which to base it on"
    guidance, also note it in `implementation-blueprint.md`.
 
-7. **Summarize.** Report what was NEW (added), what was already covered (skipped), and
-   anything promising-but-unverified worth a human look.
+8. **Link-check (automated).** Before committing, verify every internal link resolves and that
+   no source URL is obviously broken. Example for internal links:
+   ```bash
+   cd agentic-research-systems && for f in *.md; do \
+     grep -oE '\]\(\./[a-z0-9-]+\.md\)' "$f" | sed 's/](\.\///;s/)//' | \
+     while read t; do [ -f "$t" ] || echo "BROKEN: $f -> $t"; done; done
+   ```
+   Fix anything reported before proceeding.
 
-8. **Commit and push to GitHub.** Stage the new/changed files, commit with a clear message
-   (e.g. `Add <system> to agentic-research-systems catalog`), and push to the **current
-   branch** with `git push -u origin <branch>`. On network failure, retry up to 4 times with
-   exponential backoff (2s, 4s, 8s, 16s). Do NOT open a pull request unless the user asks.
-   If there are no new systems to add, skip the commit and just report that the catalog is
-   already up to date.
+9. **Summarize.** Report what was NEW (added), what was already covered (skipped), what was
+   left for next run (over the cap), and anything promising-but-unverified worth a human look.
+
+10. **Commit and push to GitHub.** Stage the new/changed files, commit with a clear message
+    (e.g. `Add <system> to agentic-research-systems catalog`), and push to the **current
+    branch** with `git push -u origin <branch>`. On network failure, retry up to 4 times with
+    exponential backoff (2s, 4s, 8s, 16s). Do NOT open a pull request unless the user asks.
+    If there are no new systems to add, skip the commit and just report that the catalog is
+    already up to date.
 
 ## House rules (keep the catalog consistent)
 
@@ -72,6 +96,8 @@ work to the current branch on GitHub (step 8).
 - **Honesty caveat.** These systems *propose* (candidates, targets, hypotheses) that humans
   validate — they do not autonomously cure anything. Keep that framing; never overstate results.
 - **One system per file.** Disambiguate when two papers share a name (note both).
+- **Flag uncertainty.** Details extracted from a README/blog/secondary source (not the primary
+  paper) or that you couldn't confirm should be marked "(unconfirmed)" — don't state them flatly.
 - Match the tone, headers, and table style of the existing files.
 
 ## Reference
