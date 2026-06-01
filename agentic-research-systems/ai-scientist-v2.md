@@ -76,4 +76,4 @@ still review and the system cannot run physical lab work.
 
 - [The AI Scientist-v2 — arXiv:2504.08066](https://arxiv.org/abs/2504.08066)
 - [Code — SakanaAI/AI-Scientist-v2 (GitHub)](https://github.com/SakanaAI/AI-Scientist-v2)
-- [Sakana AI — The AI Scientist (Nature)](https://sakana.ai/ai-scientist-nature/)
+- [Sakana AI — The AI Scientist *v1* (the v1 line was published in Nature; **v2 above is an arXiv preprint, not in Nature**)](https://sakana.ai/ai-scientist-nature/)

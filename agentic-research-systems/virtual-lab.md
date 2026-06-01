@@ -3,7 +3,7 @@
 **Type:** Agentic LLM system (multi-agent "research team" with human in the loop)
 **Organization:** Stanford (Kyle Swanson, James Zou et al.)
 **Year:** 2024 bioRxiv → 2025 *Nature* (s41586-025-09442-9)
-**Foundation model(s):** OpenAI GPT models (repo currently defaults to a recent GPT)
+**Foundation model(s):** OpenAI GPT (repo README states it defaults to **GPT-5.2**)
 
 ## What it is
 
