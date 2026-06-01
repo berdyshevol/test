@@ -22,8 +22,8 @@ tool the agent calls, but it does not get its own file.)
 
 ## Workflow
 
-Run these steps in order. **Stop after writing files — do NOT run any git commands**
-(no add/commit/push). Leave that to the user.
+Run these steps in order. After writing the catalog files, **commit and push** the new
+work to the current branch on GitHub (step 8).
 
 1. **Load the existing catalog for dedup.** Read `agentic-research-systems/index.md` and list
    the current entry files. Build a set of system names already covered. Anything you find
@@ -54,8 +54,15 @@ Run these steps in order. **Stop after writing files — do NOT run any git comm
    number, name, type, org, year, file link). If a new system changes the "which to base it on"
    guidance, also note it in `implementation-blueprint.md`.
 
-7. **Stop and summarize.** Report what was NEW (added), what was already covered (skipped), and
-   anything promising-but-unverified worth a human look. Do not touch git.
+7. **Summarize.** Report what was NEW (added), what was already covered (skipped), and
+   anything promising-but-unverified worth a human look.
+
+8. **Commit and push to GitHub.** Stage the new/changed files, commit with a clear message
+   (e.g. `Add <system> to agentic-research-systems catalog`), and push to the **current
+   branch** with `git push -u origin <branch>`. On network failure, retry up to 4 times with
+   exponential backoff (2s, 4s, 8s, 16s). Do NOT open a pull request unless the user asks.
+   If there are no new systems to add, skip the commit and just report that the catalog is
+   already up to date.
 
 ## House rules (keep the catalog consistent)
 
