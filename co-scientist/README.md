@@ -34,7 +34,8 @@ Subagents (`.claude/agents/cs-*.md`) and the orchestrator skill
 ## Build status
 
 - [x] **Phase 0** — skeleton, Elo math + tests, JSON schemas
-- [ ] **Phase 1** — individual subagents (Generation, Reflection, …)
+- [x] **Phase 1** — individual subagents in `.claude/agents/cs-*.md` (Generation, Reflection,
+  Ranking, Evolution, Proximity, Meta-review); frontmatter validated, Generation contract smoke-tested
 - [ ] **Phase 2** — one full round (generate → reflect → tournament → Elo)
 - [ ] **Phase 3** — the loop (evolution + meta-review + multi-round + termination)
 - [ ] **Phase 4** — literature grounding + real dedup
