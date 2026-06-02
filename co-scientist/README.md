@@ -36,7 +36,9 @@ Subagents (`.claude/agents/cs-*.md`) and the orchestrator skill
 - [x] **Phase 0** — skeleton, Elo math + tests, JSON schemas
 - [x] **Phase 1** — individual subagents in `.claude/agents/cs-*.md` (Generation, Reflection,
   Ranking, Evolution, Proximity, Meta-review); frontmatter validated, Generation contract smoke-tested
-- [ ] **Phase 2** — one full round (generate → reflect → tournament → Elo)
+- [x] **Phase 2** — orchestrator skill `.claude/skills/co-scientist/` runs one full round
+  (generate → reflect → tournament → Elo); tournament→Elo path validated on a live mini-round
+  (run it with `/co-scientist "<goal>"`)
 - [ ] **Phase 3** — the loop (evolution + meta-review + multi-round + termination)
 - [ ] **Phase 4** — literature grounding + real dedup
 - [ ] **Phase 5** — Agent SDK reproducibility harness
