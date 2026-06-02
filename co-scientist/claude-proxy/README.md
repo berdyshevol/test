@@ -45,5 +45,17 @@ recording tools this proxy serves.
   model over-stuff fields. The framework's real schemas are tight, which helps.
 - **No live web grounding** in this mode (web tools off) — fine for an architecture
   comparison; add a tool-dispatch path later if you want grounded runs.
-- Smoke-tested standalone (plain + tool-call paths). End-to-end run against the framework is
-  the next step.
+
+## Verified end-to-end ✅
+The `Kaimen-Inc/Co-Scientist` framework ran on Claude through this proxy with **no API key**:
+its Generation agent produced real hypotheses (e.g. *Auranofin / thioredoxin-reductase* and
+*Disulfiram / ALDH cancer-stem-cells* for PDAC), with token usage flowing back correctly.
+
+**Latency note:** each `claude -p` call is a fresh subprocess (~5–9s). A full multi-round run
+makes dozens of calls, so a default wall-clock will time out mid-tournament. For a complete
+run, raise `--wall-clock` (e.g. 1800–3600s), keep `--n` small (2–3), set
+`[run] max_ideas` low (~4–6), and `enable_classifier=false` / `enable_citation_verifier=false`.
+
+Reproduce: `pip install -e` the framework into a venv, `OPENAI_API_KEY=dummy`,
+`co-scientist -c claude.toml init`, start this proxy, then
+`co-scientist -c claude.toml run "<goal>" --n 2 --wall-clock 1800`.
