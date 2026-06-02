@@ -8,10 +8,14 @@ Used by the orchestrator skill after each tournament bracket (Phase 2+).
 
 CLI:
     python elo.py --session ../data/<session_id>
-        reads  <session>/hypotheses.json  (list of {"id", "elo"?, ...})
-               <session>/matches.json      (list of {"a", "b", "winner"})
-        writes updated "elo" back into hypotheses.json
-        prints the standings
+        reads  <session>/hypotheses.json  (list of {"id", ...})
+               <session>/matches.json      (append-only FULL match history)
+        recomputes every hypothesis's Elo from BASE_RATING over the full history,
+        writes the result back into hypotheses.json, prints the standings.
+
+The CLI is **idempotent**: it always recomputes from BASE over all matches, so it can be
+re-run every round as matches.json grows without double-counting. (Recompute-from-history in
+chronological order is equivalent to updating incrementally each round — see test_elo.py.)
 """
 from __future__ import annotations
 
@@ -81,7 +85,8 @@ def _run_cli(session: Path) -> None:
     hyps = json.loads(hyps_path.read_text())
     matches = json.loads(matches_path.read_text())
 
-    ratings = {h["id"]: float(h.get("elo", BASE_RATING)) for h in hyps}
+    # Recompute from BASE over the full history -> idempotent (no double-counting on re-run).
+    ratings = {h["id"]: BASE_RATING for h in hyps}
     ratings = apply_matches(ratings, matches)
 
     for h in hyps:

@@ -39,7 +39,10 @@ Subagents (`.claude/agents/cs-*.md`) and the orchestrator skill
 - [x] **Phase 2** — orchestrator skill `.claude/skills/co-scientist/` runs one full round
   (generate → reflect → tournament → Elo); tournament→Elo path validated on a live mini-round
   (run it with `/co-scientist "<goal>"`)
-- [ ] **Phase 3** — the loop (evolution + meta-review + multi-round + termination)
+- [x] **Phase 3** — multi-round loop: evolution + meta-review feedback + fresh injection +
+  active-set pruning + debate-mode for top seeds + Elo-stability termination. `elo.py` made
+  idempotent (recompute-from-history) so accumulating rounds don't double-count; `round_log.json`
+  tracks the top-Elo trajectory (the test-time-compute signal)
 - [ ] **Phase 4** — literature grounding + real dedup
 - [ ] **Phase 5** — Agent SDK reproducibility harness
 

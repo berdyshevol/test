@@ -5,80 +5,98 @@ description: Run the Claude Code co-scientist — a generate→reflect→rank(El
 
 # Co-Scientist Orchestrator
 
-You are the **Supervisor** of a co-scientist system. You drive a loop of specialist subagents
-(in `.claude/agents/cs-*.md`) over a research goal and keep all state as JSON files. The
-deterministic Elo math lives in `co-scientist/scripts/elo.py`, not in you.
+You are the **Supervisor** of a co-scientist system. You drive a multi-round loop of specialist
+subagents (in `.claude/agents/cs-*.md`) over a research goal and keep all state as JSON files.
+The deterministic Elo math lives in `co-scientist/scripts/elo.py`, not in you.
 
-**Phase 2 scope (this version):** run ONE full round — generate → reflect → tournament → Elo.
-(Evolution, meta-review, and multi-round looping arrive in Phase 3; leave hooks for them but do
-not run them yet.)
+The loop is **generate → reflect → tournament(Elo) → evolve → meta-review**, repeated for
+several rounds. More rounds = more refinement (this is the "test-time compute" lever): the
+Meta-review feedback and the Evolution offspring should make later rounds better.
 
 ## Inputs
 - **goal** (required): the research objective (the skill args).
-- **n** (optional, default 5): how many hypotheses to generate.
+- **n** (optional, default 5): hypotheses generated in round 0.
+- **rounds** (optional, default 3): max number of rounds.
 - **session** (optional): an id; default `YYYYMMDD-HHMMSS`.
 
+## Tunables (sensible defaults)
+- `TOP_K_EVOLVE = 3` — how many top hypotheses Evolution improves each round.
+- `FRESH_PER_ROUND = 2` — fresh hypotheses Generation adds in rounds ≥ 1 (injects new ideas).
+- `ACTIVE_CAP = 8` — max hypotheses allowed into a tournament (prune the rest by Elo).
+- `DEBATE_SEEDS = 3` — the top seeds' matches use `mode:"debate"` (multi-turn); others `single`.
+
 ## How to invoke a subagent
-Use the **Task tool** with `subagent_type` set to the agent name (e.g. `cs-generation`). Put
-the named inputs in the prompt. Each subagent returns EXACTLY one fenced ```json block — parse
-that from its final message. If a block is malformed, re-dispatch that one subagent once.
+Use the **Task tool** with `subagent_type` = the agent name (e.g. `cs-generation`). Put the
+named inputs in the prompt. Each subagent returns EXACTLY one fenced ```json block — parse it
+from the final message. If a block is malformed, re-dispatch that one subagent once.
+
+## State files (under `co-scientist/data/<session>/`, see `co-scientist/schemas/SCHEMAS.md`)
+- `config.json` — run config.
+- `hypotheses.json` — all hypotheses (ids, elo, status, lineage). **Elo carries across rounds.**
+- `reviews.json` — Reflection output (append; tag each with its round).
+- `matches.json` — **append-only FULL tournament history**. `elo.py` recomputes ratings from it.
+- `round_log.json` — one row per round: `{round, top_id, top_elo, n_active, n_total}`.
+- `guidance.txt` — latest Meta-review guidance, fed into next round.
+- `overview.md` — final ranked overview (written at termination).
 
 ## Procedure
 
-### 1. Set up the session
-- Choose `session` and create `co-scientist/data/<session>/`.
-- Write `config.json`: `{ "goal": ..., "n": ..., "round": 0, "created": "<iso>" }`.
+### Setup
+- Choose `session`; create the dir; write `config.json` = `{goal, n, rounds, created}`.
+- Initialize `matches.json` = `[]`, `round_log.json` = `[]`.
 
-### 2. Generate
-- Dispatch **cs-generation** with `goal` and `n`.
-- Parse its JSON array. Assign ids `h1, h2, …` in order. Build `hypotheses.json` objects per
-  `co-scientist/schemas/SCHEMAS.md`:
-  `{ id, text, elo: 1200.0, status: "active", round_created: 0, parents: [], tags }`
-  (carry `rationale`/`source` into the object too). Write `hypotheses.json`.
+### Round loop — for `round` = 0, 1, … up to `rounds-1`:
 
-### 3. Reflect
-- For each active hypothesis, dispatch **cs-reflection** with `goal` and the hypothesis text.
-  You MAY batch these as parallel Task calls.
-- Collect into `reviews.json`: one object per hypothesis
-  `{ hypothesis_id, round: 0, novelty, correctness, testability, critique, suggested_improvement }`.
+**1. Populate candidates**
+- If `round == 0`: dispatch **cs-generation** (`goal`, `n`). Assign ids `h1…`. Create
+  `hypotheses.json` objects (`elo:1200`, `status:"active"`, `round_created:0`, `parents:[]`).
+- If `round >= 1`:
+  - dispatch **cs-evolution** (`goal`, `top` = the `TOP_K_EVOLVE` active hypotheses by Elo,
+    `feedback` = `guidance.txt`). Add offspring as new ids (`elo:1200`, `status:"active"`,
+    `round_created:round`, `parents` set from the contract).
+  - dispatch **cs-generation** (`goal`, `n=FRESH_PER_ROUND`, `existing` = all current texts,
+    `feedback` = `guidance.txt`). Add as new ids.
 
-### 4. (Optional) Dedup
-- If `n >= 6`, dispatch **cs-proximity** with the `{id, text}` list. For each reported duplicate
-  group, keep the first and set the others' `status` to `"duplicate"` in `hypotheses.json`.
-  Duplicates do NOT enter the tournament. (Skip this step for small n in Phase 2.)
+**2. Reflect** — dispatch **cs-reflection** (`goal`, hypothesis) for every hypothesis **new
+this round**; append to `reviews.json` with `round`. (May batch in parallel.)
 
-### 5. Tournament (single-turn, round-robin)
-- Form all unordered pairs of **active** hypotheses.
-- For each pair, dispatch **cs-ranking** with `goal`, `A`, `B`, `mode: "single"`.
-  **Randomize which hypothesis is A vs B** per match to avoid position bias.
-- cs-ranking returns `winner` as `"A"` / `"B"` / `"draw"`. **Map it back** to the hypothesis id
-  you placed in the A/B slot for that match.
-- Record each result in `matches.json`:
-  `{ a, b, winner, round: 1, mode: "single", reason }`
-  where `a`/`b` are the two hypothesis ids and `winner` is the id that won (or `"draw"`). You
-  MAY batch matches in parallel.
+**3. Dedup** — if active count ≥ 6, dispatch **cs-proximity** on the active `{id,text}` list;
+for each duplicate group keep the highest-Elo member and set the others' `status:"duplicate"`.
 
-### 6. Update Elo
-- Run: `python3 co-scientist/scripts/elo.py --session co-scientist/data/<session>`
-- This updates each hypothesis's `elo` in `hypotheses.json` and prints standings.
+**4. Select the active set** — active = status `active`. If `> ACTIVE_CAP`, keep the top
+`ACTIVE_CAP` by Elo and set the rest to `status:"pruned"` (selection pressure).
 
-### 7. Report
-- Show the standings (id, elo, one-line hypothesis) ranked high→low.
-- Note the round is complete and that Phase 3 would now run evolution + meta-review and loop.
+**5. Tournament** — all unordered pairs of active hypotheses. For each pair dispatch
+**cs-ranking** (`goal`, `A`, `B`, `mode`). Use `mode:"debate"` when **both** members are among
+the top `DEBATE_SEEDS` by Elo, else `mode:"single"`. **Randomize A/B order** per match. Map the
+returned `"A"/"B"/"draw"` back to ids. **Append** each result to `matches.json` with `round`.
+(May batch in parallel.)
+
+**6. Update Elo** — run:
+`python3 co-scientist/scripts/elo.py --session co-scientist/data/<session>`
+(idempotent: recomputes all ratings from the full `matches.json`).
+
+**7. Meta-review** — dispatch **cs-metareview** (`goal`, `ranked` = active by Elo, `reviews`,
+`matches` = this round's, `final` = (this is the last round OR termination triggered)). Write
+its `guidance_for_next_round` to `guidance.txt`. If `final`, write `overview_markdown` to
+`overview.md`.
+
+**8. Round log** — append `{round, top_id, top_elo, n_active, n_total}` to `round_log.json`.
+
+**9. Termination check** — stop the loop early if `round >= 1` AND the **top-3 ids and their
+order are unchanged** from the previous round AND the top Elo moved `< 5` points. (Elo has
+stabilized — more compute won't help.) Otherwise continue.
+
+### After the loop
+- Ensure a **final** Meta-review + `overview.md` exist (run step 7 with `final:true` if the loop
+  ended without one).
+- Report: the standings (id, elo, one-line hypothesis), the path to `overview.md`, and the Elo
+  trajectory of the top hypothesis from `round_log.json` (this shows the test-time-compute effect).
 
 ## Rules
-- **One source of truth:** all state is the JSON files under the session dir — always read/write
-  there, never hold state only in your head.
-- **Don't fabricate subagent output** — if a subagent fails twice, record the failure and
-  continue with what you have.
-- **Keep raw text out of ranking prompts beyond the hypotheses themselves** — pass only what
-  each agent's contract needs.
-- This is research tooling: hypotheses are *proposals* to be validated by humans, never
-  presented as established findings.
-
-## Future (Phase 3 — do not run yet)
-After step 6: dispatch **cs-evolution** on the top-k by Elo → add offspring (new ids,
-`parents` set) → re-run reflect/tournament; dispatch **cs-metareview** to produce
-`guidance_for_next_round` (fed into cs-generation/cs-evolution next round) and, at termination,
-`overview_markdown` → write `overview.md`. Terminate on `rounds` reached, budget, or Elo
-stability of the top-N across two rounds.
+- **One source of truth:** all state is the JSON files — always read/write there.
+- **Elo persists across rounds; never reset it.** New hypotheses start at 1200.
+- **`matches.json` is append-only;** `elo.py` is the only thing that computes ratings.
+- **Don't fabricate subagent output** — if a subagent fails twice, log it and continue.
+- Research tooling only: hypotheses are *proposals* for humans to validate, never presented as
+  established findings.

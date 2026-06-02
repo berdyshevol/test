@@ -68,6 +68,20 @@ def test_draw_between_fresh_equals_no_change():
     assert approx(out["x"], 1200) and approx(out["y"], 1200)
 
 
+def test_incremental_equals_full_recompute():
+    # The CLI recomputes from BASE over the full history each round. That must equal updating
+    # incrementally round-by-round, otherwise multi-round runs would drift / double-count.
+    round1 = [{"a": "h1", "b": "h2", "winner": "h1"}]
+    round2 = [
+        {"a": "h1", "b": "h3", "winner": "h1"},
+        {"a": "h2", "b": "h3", "winner": "h2"},
+    ]
+    incremental = elo.apply_matches(elo.apply_matches({}, round1), round2)
+    full = elo.apply_matches({}, round1 + round2)  # recompute from base
+    assert set(incremental) == set(full)
+    assert all(approx(incremental[k], full[k]) for k in full)
+
+
 def test_standings_sorted_desc():
     s = elo.standings({"a": 1190, "b": 1300, "c": 1205})
     assert [hid for hid, _ in s] == ["b", "c", "a"]
