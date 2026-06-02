@@ -60,17 +60,25 @@ from the final message. If a block is malformed, re-dispatch that one subagent o
 **2. Reflect** — dispatch **cs-reflection** (`goal`, hypothesis) for every hypothesis **new
 this round**; append to `reviews.json` with `round`. (May batch in parallel.)
 
-**3. Dedup** — if active count ≥ 6, dispatch **cs-proximity** on the active `{id,text}` list;
-for each duplicate group keep the highest-Elo member and set the others' `status:"duplicate"`.
+**3. Dedup** — dispatch **cs-proximity** on the active `{id,text}` list whenever new
+hypotheses were added this round AND active count ≥ 4 (evolution offspring often paraphrase
+their parents, so dedup matters even for small sets). For each duplicate group keep the
+highest-Elo member and set the others' `status:"duplicate"`.
 
 **4. Select the active set** — active = status `active`. If `> ACTIVE_CAP`, keep the top
 `ACTIVE_CAP` by Elo and set the rest to `status:"pruned"` (selection pressure).
 
 **5. Tournament** — all unordered pairs of active hypotheses. For each pair dispatch
-**cs-ranking** (`goal`, `A`, `B`, `mode`). Use `mode:"debate"` when **both** members are among
-the top `DEBATE_SEEDS` by Elo, else `mode:"single"`. **Randomize A/B order** per match. Map the
-returned `"A"/"B"/"draw"` back to ids. **Append** each result to `matches.json` with `round`.
-(May batch in parallel.)
+**cs-ranking** (`goal`, `A`, `B`, `mode`). Use `mode:"debate"` only when the active set is
+**larger than** `DEBATE_SEEDS` AND **both** members are among the top `DEBATE_SEEDS` by Elo;
+otherwise `mode:"single"`. (Without the size guard, small sets where everyone is a "top seed"
+would make every match an expensive debate.) Break Elo ties by lower hypothesis-id number.
+**Randomize A/B order** per match. Map the returned `"A"/"B"/"draw"` back to ids. **Append**
+each result to `matches.json` with `round`. (May batch in parallel.)
+
+> **Cost note:** round-robin is O(active²) ranking calls — at `ACTIVE_CAP=8` that's 28 matches
+> per round. Keep `ACTIVE_CAP` and `rounds` modest, or switch to Swiss/seeded pairing for large
+> sets (a future optimization).
 
 **6. Update Elo** — run:
 `python3 co-scientist/scripts/elo.py --session co-scientist/data/<session>`
